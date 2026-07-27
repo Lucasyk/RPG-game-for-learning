@@ -18,24 +18,35 @@ class BattleController extends Controller
         return view("dashboard", compact("player"));
    }
    //The battle start should show the battle page
-   public function show(Request $request){
-      $player = $request->user()->player;
-      $enemy = Enemy::inRandomOrder()->firstOrFail();
+   public function show(Request $request)
+{
+    $player = $request->user()->player;
 
-      if(!$player){
-         return redirect("/dashboard")->withErrors(["player"=>"You don't have character yet...."]);
-      }
+    if (!$player) {
+        return redirect('/dashboard')->withErrors([
+            'player' => "You don't have a character yet.",
+        ]);
+    }
 
-      $battle = $request->session()->get("battle");
+    $battle = $request->session()->get('battle');
 
-      if(!$battle){
-         $battle = $this->createBattle($player, $enemy);
+    $battleIsOutdated =
+        !$battle ||
+        !isset($battle['player']['level']) ||
+        !isset($battle['player']['exp']) ||
+        !isset($battle['player']['exp_to_next_level']) ||
+        !isset($battle['enemy']['exp_reward']);
 
-         $request->session()->put("battle", $battle);
-      }
+    if ($battleIsOutdated) {
+        $enemy = Enemy::inRandomOrder()->firstOrFail();
 
-    return view("battle.show", compact("battle"));
-   }
+        $battle = $this->createBattle($player, $enemy);
+
+        $request->session()->put('battle', $battle);
+    }
+
+    return view('battle.show', compact('battle'));
+}
 
    //Handling attacks
    public function attack(Request $request){
@@ -147,6 +158,8 @@ class BattleController extends Controller
 
    private function createBattle(Player $player, Enemy $enemy):array
    {
+      $level = (int) ($player->level ?? 1);
+      $exp = (int) ($player->exp ?? 0);
       return [
          "player" => [
             "id"=>$player->id,

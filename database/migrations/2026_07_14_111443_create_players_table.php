@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string("description")->nullable();
             $table->unsignedInteger("level")->default(1);
             $table->unsignedInteger("exp")->default(0);
+            $table->unsignedInteger("exp_to_next_level")->default(0);
             $table->unsignedInteger("gold")->default(0);
             $table->integer('max_hp')->default(10);
             $table->integer('max_mp')->default(10);

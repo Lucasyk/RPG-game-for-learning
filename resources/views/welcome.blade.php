@@ -41,7 +41,7 @@
 
                 <h1 class="text-5xl font-black leading-tight sm:text-6xl lg:text-7xl">
                     Create your hero.
-                    <span class="block bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+                    <span class="block bg-linear-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
                         Defeat monsters.
                     </span>
                     Become suspiciously powerful.
@@ -77,7 +77,7 @@
 
             {{-- Battle preview card --}}
             <div class="relative">
-                <div class="absolute inset-0 rotate-3 rounded-3xl bg-gradient-to-br from-purple-600 to-red-600 opacity-40 blur-xl"></div>
+                <div class="absolute inset-0 rotate-3 rounded-3xl bg-linear-to-br from-purple-600 to-red-600 opacity-40 blur-xl"></div>
 
                 <div class="relative rounded-3xl border border-gray-800 bg-gray-900/90 p-6 shadow-2xl backdrop-blur">
                     <div class="mb-6 flex items-center justify-between">
