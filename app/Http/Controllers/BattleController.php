@@ -56,16 +56,48 @@ class BattleController extends Controller
       $battle["enemy"]["hp"] = max(0, $battle["enemy"]["hp"] - $playerDamage);
       $battle["log"][] = "The {$battle['player']['name']} dealt {$playerDamage} to {$battle['enemy']['name']} ";
       //Check if monster is defeated
-      if($battle["enemy"]["hp"] <= 0){
-         $battle["status"] = "won";
-         $battle["log"][] = "The {$battle['enemy']['name']} was defeated!";
+      if ($battle['enemy']['hp'] <= 0) {
+         $battle['status'] = 'won';
 
-         $request->session()->put("battle", $battle);
+         $battle['log'][] =
+            "{$battle['enemy']['name']} was defeated!";
+
+         $player = $request->user()->player;
+
+         $expReward = (int) (
+            $battle['enemy']['exp_reward'] ?? 10
+         );
+
+         $rewards = $this->grantExp(
+            $player,
+            $expReward
+         );
+
+         $battle['rewards'] = $rewards;
+
+         $battle['player']['level'] =
+            $rewards['new_level'];
+
+         $battle['player']['exp'] =
+            $rewards['current_exp'];
+
+         $battle['player']['exp_to_next_level'] =
+            $rewards['exp_to_next_level'];
+
+         $battle['log'][] =
+            "{$player->name} gained {$expReward} EXP!";
+
+         if ($rewards['levels_gained'] > 0) {
+            $battle['log'][] =
+                  "{$player->name} reached level {$rewards['new_level']}!";
+         }
+
+         $request->session()->put('battle', $battle);
 
          return response()->json([
-            "battle"=>$battle,
+            'battle' => $battle,
          ]);
-      }
+}
 
       //Enemy turn
       $enemyDamage = max(1, $battle["enemy"]["attack"] - $battle["player"]["defense"]);
@@ -121,6 +153,9 @@ class BattleController extends Controller
             "name"=>$player->name,
             "character_class"=>$player->character_class,
             "icon"=>$player->icon,
+            'level' => $player->level,
+            'exp' => $player->exp,
+            'exp_to_next_level' => $this->expRequired($player->level),
             "hp"=>$player->max_hp,
             "max_hp"=>$player->max_hp,
             "max_mp"=>$player->max_mp,
@@ -145,6 +180,7 @@ class BattleController extends Controller
             "fire_res"=>$enemy->fire_res,
             "water_res"=>$enemy->water_res,
             "electric_res"=>$enemy->electric_res,
+            "exp_reward"=>$enemy->exp_reward,
          ],
          "status"=>"ongoing",
          "log"=>[
@@ -152,4 +188,44 @@ class BattleController extends Controller
          ]
       ];
    }
+   private function expRequired(int $level){
+      return  $level * 100;
+   }
+   public function grantExp(Player $player, int $gainedExp){
+    $oldLevel = $player->level;
+    $levelsGained = 0;
+
+    $player->exp += $gainedExp;
+
+    while (
+        $player->exp >= $this->expRequired($player->level)
+    ) {
+        $requiredExp = $this->expRequired($player->level);
+
+        $player->exp -= $requiredExp;
+        $player->level++;
+        $levelsGained++;
+
+        // Stat increases for each level
+        $player->max_hp += 5;
+        $player->max_mp += 2;
+        $player->attack += 2;
+        $player->defense += 2;
+        $player->speed += 1;
+    }
+
+    $player->save();
+
+    return [
+        'exp_gained' => $gainedExp,
+        'old_level' => $oldLevel,
+        'new_level' => $player->level,
+        'levels_gained' => $levelsGained,
+        'current_exp' => $player->exp,
+        'exp_to_next_level' => $this->expRequired(
+            $player->level
+        ),
+    ];
+   }
 }
+

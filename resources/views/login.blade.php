@@ -1,5 +1,12 @@
 <x-layout>
       <main class="flex min-h-screen flex-col gap-5 items-center justify-center bg-black p-5">
+        @if($errors->any())
+            <ul>
+                <li class="text-red-500">
+                    {{$errors->first()}}
+                </li>
+            </ul>
+        @endif
   <form action="{{route('login')}}" method="post" class="flex flex-col gap-5 p-5 bg-gray-900 rounded-xl max-w-md w-full">
     @csrf
     <h1 class="text-white">Login</h1>

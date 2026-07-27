@@ -1,5 +1,12 @@
 <x-layout>
-    <main class="flex min-h-screen items-center justify-center bg-black p-5">
+    <main class="flex min-h-screen flex-col items-center justify-center bg-black p-5">
+        @if($errors->any())
+            <ul>
+                <li class="text-red-500">
+                    {{$errors->first()}}
+                </li>
+            </ul>
+        @endif
         <form
             action="{{ route('register') }}"
             method="POST"

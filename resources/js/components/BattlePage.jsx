@@ -131,6 +131,16 @@ export default function BattlePage({
               symbol={battle.player.icon}
                     />
 
+                    <h2 className="text-3xl font-black">
+                        {fighter.name}
+                    </h2>
+
+                    {fighter.level && (
+                        <p className="mt-1 font-bold text-yellow-400">
+                            Level {fighter.level}
+                        </p>
+                    )}
+
                     <FighterCard
                         title="Enemy"
                         fighter={battle.enemy}

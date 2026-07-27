@@ -20,6 +20,7 @@ class EnemySeeder extends Seeder
                 "attack"=>4,
                 "defense"=>4,
                 "speed"=>4,
+                "exp_reward"=>30
             ]
         );
         Enemy::updateOrCreate(
@@ -29,6 +30,7 @@ class EnemySeeder extends Seeder
                 "attack"=>6,
                 "defense"=>5,
                 "speed"=>5,
+                "exp_reward"=>50,
             ]
         );
         Enemy::updateOrCreate(
@@ -38,6 +40,7 @@ class EnemySeeder extends Seeder
                 "attack"=>7,
                 "defense"=>7,
                 "speed"=>10,
+                "exp_reward"=>70,
             ]
         );
     }
