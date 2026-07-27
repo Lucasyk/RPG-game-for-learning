@@ -240,6 +240,16 @@ export default function BattlePage({
 |--------------------------------------------------------------------------
 */
 
+function getPlayerIcon(characterClass) {
+    const icons = {
+         warrior: '🛡️',
+        mage: '🧙',
+        rogue: '🗡️',
+    }
+
+    return icons[characterClass] ?? '🧑‍🚀';
+}
+
 function FighterCard({
     title,
     fighter,
@@ -264,7 +274,9 @@ function FighterCard({
                     />
                 ) : (
                     <div className="my-5 text-8xl">
-                        ❓
+                            {
+                                fighter.character_class ? getPlayerIcon(fighter.character_class) : fighter.name
+                        }
                     </div>
                 )}
 
