@@ -180,6 +180,7 @@ export default function BattlePage({
                     <FighterCard
                         title="Your Player"
                         fighter={battle.player}
+                        showStats
                     />
 
                     <FighterCard
@@ -239,7 +240,11 @@ export default function BattlePage({
 |--------------------------------------------------------------------------
 */
 
-function FighterCard({ title, fighter }) {
+function FighterCard({
+    title,
+    fighter,
+    showStats = false,
+}) {
     const hasLevel =
         fighter.level !== undefined &&
         fighter.level !== null;
@@ -304,22 +309,24 @@ function FighterCard({ title, fighter }) {
                 />
             )}
 
-            {/* <div className="mt-6 grid grid-cols-3 gap-3">
-                <Stat
-                    label="ATK"
-                    value={fighter.attack}
-                />
+            {showStats && (
+                <div className="mt-6 grid grid-cols-3 gap-3">
+                    <Stat
+                        label="ATK"
+                        value={fighter.attack}
+                    />
 
-                <Stat
-                    label="DEF"
-                    value={fighter.defense}
-                />
+                    <Stat
+                        label="DEF"
+                        value={fighter.defense}
+                    />
 
-                <Stat
-                    label="SPD"
-                    value={fighter.speed}
-                />
-            </div> */}
+                    <Stat
+                        label="SPD"
+                        value={fighter.speed}
+                    />
+                </div>
+            )}
         </article>
     );
 }
@@ -467,19 +474,19 @@ function ExperienceBar({
 |--------------------------------------------------------------------------
 */
 
-// function Stat({ label, value = 0 }) {
-//     return (
-//         <div className="rounded-xl bg-gray-800 p-3 text-center">
-//             <p className="text-xs font-bold text-gray-500">
-//                 {label}
-//             </p>
+function Stat({ label, value = 0 }) {
+    return (
+        <div className="rounded-xl bg-gray-800 p-3 text-center">
+            <p className="text-xs font-bold text-gray-500">
+                {label}
+            </p>
 
-//             <p className="mt-1 text-xl font-black">
-//                 {value}
-//             </p>
-//         </div>
-//     );
-// }
+            <p className="mt-1 text-xl font-black">
+                {value}
+            </p>
+        </div>
+    );
+}
 
 /*
 |--------------------------------------------------------------------------
