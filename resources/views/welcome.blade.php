@@ -1,7 +1,7 @@
 <x-layout>
     <main class="relative min-h-screen overflow-hidden bg-slate-950 text-white">
         {{-- Background effects --}}
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.25),_transparent_45%)]"></div>
+        <div class="absolute inset-0 bg-radial-[at_top] from-purple-600/25 to-transparent to-45%"></div>
 
         <div class="absolute -left-32 top-32 h-72 w-72 rounded-full bg-purple-700/20 blur-3xl"></div>
         <div class="absolute -right-32 bottom-20 h-80 w-80 rounded-full bg-red-600/20 blur-3xl"></div>

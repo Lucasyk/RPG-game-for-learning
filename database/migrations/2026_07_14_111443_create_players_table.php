@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('character_class');
             $table->string("description")->nullable();
-            $table->unsignedInteger("lvl")->default(1);
+            $table->unsignedInteger("level")->default(1);
             $table->unsignedInteger("exp")->default(0);
             $table->unsignedInteger("gold")->default(0);
             $table->integer('max_hp')->default(10);
