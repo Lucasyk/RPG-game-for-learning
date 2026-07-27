@@ -88,6 +88,8 @@ export default function BattlePage({
             setIsAttacking(false);
         }
     }
+    
+    
 
     /*
     |--------------------------------------------------------------------------

@@ -48,7 +48,7 @@ class BattleController extends Controller
     return view('battle.show', compact('battle'));
 }
 
-   //Handling attacks
+   //Handling attacks   
    public function attack(Request $request){
       //Retrieve data from session
       $battle = $request->session()->get("battle");
@@ -62,18 +62,50 @@ class BattleController extends Controller
       if($battle["status"] !== "ongoing"){
          return response()->json($battle);
       }
-      //Player attack calculation
-      $playerDamage = max(1, $battle["player"]["attack"] - $battle["enemy"]["defense"]);
-      $battle["enemy"]["hp"] = max(0, $battle["enemy"]["hp"] - $playerDamage);
-      $battle["log"][] = "The {$battle['player']['name']} dealt {$playerDamage} to {$battle['enemy']['name']} ";
-      //Check if monster is defeated
-      if ($battle['enemy']['hp'] <= 0) {
-         $battle['status'] = 'won';
+      if (
+    $battle['player']['speed'] >=
+    $battle['enemy']['speed']
+) {
+    // Player attacks first
+    $this->strike(
+        $battle['player'],
+        $battle['enemy'],
+        $battle['log']
+    );
 
-         $battle['log'][] =
-            "{$battle['enemy']['name']} was defeated!";
+    // Enemy can only attack if still alive
+    if ($battle['enemy']['hp'] > 0) {
+        $this->strike(
+            $battle['enemy'],
+            $battle['player'],
+            $battle['log']
+        );
+    }
+} else {
+    // Enemy attacks first
+    $this->strike(
+        $battle['enemy'],
+        $battle['player'],
+        $battle['log']
+    );
 
-         $player = $request->user()->player;
+    // Player can only attack if still alive
+    if ($battle['player']['hp'] > 0) {
+        $this->strike(
+            $battle['player'],
+            $battle['enemy'],
+            $battle['log']
+        );
+    }
+}
+
+if ($battle['enemy']['hp'] <= 0) {
+    $battle['status'] = 'won';
+
+    $battle['log'][] =
+        "{$battle['enemy']['name']} was defeated!";
+
+    $player = $request->user()->player;
 
          $expReward = (int) (
             $battle['enemy']['exp_reward'] ?? 10
@@ -103,22 +135,18 @@ class BattleController extends Controller
                   "{$player->name} reached level {$rewards['new_level']}!";
          }
 
+} elseif ($battle['player']['hp'] <= 0) {
+    $battle['status'] = 'lost';
+
+    $battle['log'][] =
+        "{$battle['player']['name']} was defeated!";
+}   
+
          $request->session()->put('battle', $battle);
 
          return response()->json([
             'battle' => $battle,
          ]);
-}
-
-      //Enemy turn
-      $enemyDamage = max(1, $battle["enemy"]["attack"] - $battle["player"]["defense"]);
-      $battle["player"]["hp"] = max(0, $battle["player"]["hp"] - $enemyDamage);
-      $battle["log"][] = "The {$battle['enemy']['name']} dealt {$enemyDamage} damage!!!";
-
-      if($battle["player"]["hp"] <= 0){
-         $battle["status"] = "lost";
-         $battle["log"][] = "{$battle['player']['name']} was defeated!!";
-      };
 
       $request->session()->put("battle", $battle);
 
@@ -240,5 +268,23 @@ class BattleController extends Controller
         ),
     ];
    }
+
+   private function strike(
+           array &$attacker,
+           array &$defender,
+           array &$log,
+       ): void {
+           $damage = max(
+               1,
+               $attacker["attack"] - $defender["defense"]
+           );  
+   
+           $defender["hp"] = max(
+               0,
+               $defender["hp"] - $damage,
+           );
+   
+           $log[] = "{$attacker['name']} attacks {$defender['name']} for {$damage} damage.";
+       }
 }
 
