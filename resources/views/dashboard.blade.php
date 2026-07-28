@@ -1,5 +1,16 @@
 <x-battle-layout>
   <main class="flex min-h-screen bg-black p-5 text-white flex-row gap-10">
+    @if (session('success'))
+    <p class="mb-4 text-green-400">
+        {{ session('success') }}
+    </p>
+@endif
+
+@if ($errors->any())
+    <p class="mb-4 text-red-400">
+        {{ $errors->first() }}
+    </p>
+@endif
     @if ($player)
     <a
         href="{{ route('battle.show') }}"
@@ -15,9 +26,6 @@
         Create Player
     </a>
 @endif
-    <a href="" class="bg-gray-900 h-8 p-6 flex justify-center items-center rounded-xl">
-      Save progress
-    </a>
     <a href="" class="bg-gray-900 h-8 p-6 flex justify-center items-center rounded-xl">
       Go on the journey
     </a>

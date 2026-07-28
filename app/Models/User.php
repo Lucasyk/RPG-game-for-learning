@@ -35,6 +35,10 @@ class User extends Authenticatable
         return $this->hasOne(Player::class);
     }
 
+    public function battleSave(): HasOne{
+        return $this->hasOne(BattleSave::class);
+    }
+
     
 
     /**

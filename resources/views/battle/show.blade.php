@@ -21,6 +21,7 @@
     <div
     id="battle-app"
     data-attack-url="{{ route('battle.attack') }}"
+    data-skill-url="{{route('battle.skill')}}"
     data-end-url="{{ route('battle.end') }}"
 ></div>
 

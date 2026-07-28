@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Models\Monster;
 use App\Models\Player;
 use App\Models\Enemy;
+use App\Models\BattleSave;
 
 
 class BattleController extends Controller
@@ -15,7 +17,9 @@ class BattleController extends Controller
         $user = $request->user();
         $player = $user->player;
 
-        return view("dashboard", compact("player"));
+        $battle = $request->session()->get('battle');
+
+        return view("dashboard", compact("player", "battle"));
    }
    //The battle start should show the battle page
    public function show(Request $request)
@@ -59,8 +63,10 @@ class BattleController extends Controller
          ], 404);
       }
       //If the battle status is not ongoing that means battle is over so should stop here
-      if($battle["status"] !== "ongoing"){
-         return response()->json($battle);
+      if ($battle['status'] !== 'ongoing') {
+         return response()->json([
+            'battle' => $battle,
+         ]);
       }
       if (
     $battle['player']['speed'] >=
@@ -100,40 +106,14 @@ class BattleController extends Controller
 }
 
 if ($battle['enemy']['hp'] <= 0) {
-    $battle['status'] = 'won';
 
-    $battle['log'][] =
-        "{$battle['enemy']['name']} was defeated!";
+   $this->handleVictory($request, $battle);
 
-    $player = $request->user()->player;
+   $request->session()->put('battle', $battle);
 
-         $expReward = (int) (
-            $battle['enemy']['exp_reward'] ?? 10
-         );
-
-         $rewards = $this->grantExp(
-            $player,
-            $expReward
-         );
-
-         $battle['rewards'] = $rewards;
-
-         $battle['player']['level'] =
-            $rewards['new_level'];
-
-         $battle['player']['exp'] =
-            $rewards['current_exp'];
-
-         $battle['player']['exp_to_next_level'] =
-            $rewards['exp_to_next_level'];
-
-         $battle['log'][] =
-            "{$player->name} gained {$expReward} EXP!";
-
-         if ($rewards['levels_gained'] > 0) {
-            $battle['log'][] =
-                  "{$player->name} reached level {$rewards['new_level']}!";
-         }
+   return response()->json([
+        'battle' => $battle,
+    ]);
 
 } elseif ($battle['player']['hp'] <= 0) {
     $battle['status'] = 'lost';
@@ -194,8 +174,8 @@ if ($battle['enemy']['hp'] <= 0) {
             "name"=>$player->name,
             "character_class"=>$player->character_class,
             "icon"=>$player->icon,
-            'level' => $player->level,
-            'exp' => $player->exp,
+            'level' => $level,
+            'exp' => $exp,
             'exp_to_next_level' => $this->expRequired($player->level),
             "hp"=>$player->max_hp,
             "max_hp"=>$player->max_hp,
@@ -229,10 +209,18 @@ if ($battle['enemy']['hp'] <= 0) {
          ]
       ];
    }
+   
    private function expRequired(int $level){
       return  $level * 100;
    }
-   public function grantExp(Player $player, int $gainedExp){
+
+   public function grantExp(
+    Player $player,
+    int $gainedExp
+): array {
+    $player->level = (int) ($player->level ?? 1);
+    $player->exp = (int) ($player->exp ?? 0);
+
     $oldLevel = $player->level;
     $levelsGained = 0;
 
@@ -241,13 +229,13 @@ if ($battle['enemy']['hp'] <= 0) {
     while (
         $player->exp >= $this->expRequired($player->level)
     ) {
-        $requiredExp = $this->expRequired($player->level);
+        $requiredExp =
+            $this->expRequired($player->level);
 
         $player->exp -= $requiredExp;
         $player->level++;
         $levelsGained++;
 
-        // Stat increases for each level
         $player->max_hp += 5;
         $player->max_mp += 2;
         $player->attack += 2;
@@ -256,6 +244,7 @@ if ($battle['enemy']['hp'] <= 0) {
     }
 
     $player->save();
+    $player->refresh();
 
     return [
         'exp_gained' => $gainedExp,
@@ -263,11 +252,18 @@ if ($battle['enemy']['hp'] <= 0) {
         'new_level' => $player->level,
         'levels_gained' => $levelsGained,
         'current_exp' => $player->exp,
-        'exp_to_next_level' => $this->expRequired(
-            $player->level
-        ),
+        'exp_to_next_level' =>
+            $this->expRequired($player->level),
+
+        'stats' => [
+            'max_hp' => $player->max_hp,
+            'max_mp' => $player->max_mp,
+            'attack' => $player->attack,
+            'defense' => $player->defense,
+            'speed' => $player->speed,
+        ],
     ];
-   }
+}
 
    private function strike(
            array &$attacker,
@@ -286,5 +282,238 @@ if ($battle['enemy']['hp'] <= 0) {
    
            $log[] = "{$attacker['name']} attacks {$defender['name']} for {$damage} damage.";
        }
+
+       public function skill(Request $request)
+{
+    $battle = $request->session()->get('battle');
+
+    if (!$battle) {
+        return response()->json([
+            'message' => 'There is no active battle.',
+        ], 404);
+    }
+
+    if (($battle['status'] ?? null) !== 'ongoing') {
+        return response()->json([
+            'battle' => $battle,
+        ]);
+    }
+
+    $characterClass =
+        $battle['player']['character_class'] ?? null;
+
+    $currentMp = (int) (
+        $battle['player']['mp'] ?? 0
+    );
+
+    $mpCost = $this->skillCost($characterClass);
+
+    if ($mpCost === null) {
+        return response()->json([
+            'message' => 'This class does not have a skill.',
+            'battle' => $battle,
+        ], 422);
+    }
+
+    if ($currentMp < $mpCost) {
+        return response()->json([
+            'message' => 'Not enough MP!',
+            'battle' => $battle,
+        ], 422);
+    }
+
+    $battle['player']['mp'] =
+        $currentMp - $mpCost;
+
+    switch ($characterClass) {
+        case 'warrior':
+            $this->powerStrike($battle);
+            break;
+
+        case 'mage':
+            $this->fireball($battle);
+            break;
+
+        case 'rogue':
+            $this->doubleSlash($battle);
+            break;
+
+        default:
+            return response()->json([
+                'message' => 'Unknown character class.',
+                'battle' => $battle,
+            ], 422);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enemy defeated
+    |--------------------------------------------------------------------------
+    */
+
+    if ($battle['enemy']['hp'] <= 0) {
+        // Use the same victory and EXP logic as attack().
+        $this->handleVictory($request, $battle);
+
+        $request->session()->put('battle', $battle);
+
+        return response()->json([
+            'battle' => $battle,
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enemy retaliates
+    |--------------------------------------------------------------------------
+    */
+
+    $this->strike(
+        $battle['enemy'],
+        $battle['player'],
+        $battle['log']
+    );
+
+    if ($battle['player']['hp'] <= 0) {
+        $battle['status'] = 'lost';
+
+        $battle['log'][] =
+            "{$battle['player']['name']} was defeated!";
+    }
+
+    $request->session()->put('battle', $battle);
+
+    return response()->json([
+        'battle' => $battle,
+    ]);
 }
 
+       private function skillCost(?string $characterClass): ?int
+       {
+         return match($characterClass){
+           "warrior"=>4,
+           "mage"=>7,
+           "rogue"=>5,
+           default => null, 
+         };
+       }
+
+       private function powerStrike(array &$battle): void
+       {
+         $damage = max(
+            1,
+            ($battle["player"]["attack"] * 2) - $battle["enemy"]["defense"]
+         );
+
+         $battle["enemy"]["hp"] = max(
+            0,
+            $battle["enemy"]["hp"] - $damage,
+         );
+
+         $battle["log"][] = "{$battle['player']['name']} used Power Strike!!";
+
+         $battle["log"][] = "{$battle['player']['name']} strikes {$battle['enemy']['name']} for {$damage} damage!!";
+       }
+
+       private function fireball(array &$battle): void
+       {
+         $fireResistance = max(
+            0,
+            (int) ($battle["enemy"]["fire_res"] ?? 0)
+         );
+
+         $damage = max(
+            1,
+            ($battle["player"]["attack"] * 2) + 5 - $fireResistance
+         );
+
+         $battle["enemy"]["hp"] = max(
+            0,
+            $battle["enemy"]["hp"] - $damage,
+         );
+
+         $battle["log"][] = "{$battle['player']['name']} used Fireball!!";
+
+         $battle["log"][] = "{$battle['enemy']['name']} took {$damage} fire damage!!";
+       }
+
+       private function doubleSlash(array &$battle):void
+       {
+         $battle['log'][] =
+        "{$battle['player']['name']} used Double Slash!";
+
+    for ($hit = 1; $hit <= 2; $hit++) {
+        if ($battle['enemy']['hp'] <= 0) {
+            break;
+        }
+
+        $damage = max(
+            1,
+            $battle['player']['attack']
+                - intdiv(
+                    $battle['enemy']['defense'],
+                    2
+                )
+        );
+
+        $battle['enemy']['hp'] = max(
+            0,
+            $battle['enemy']['hp'] - $damage
+        );
+
+        $battle['log'][] =
+            "Hit {$hit} dealt {$damage} damage!";
+
+       }
+}
+
+private function handleVictory(
+    Request $request,
+    array &$battle
+): void {
+    $battle['status'] = 'won';
+
+    $battle['log'][] =
+        "{$battle['enemy']['name']} was defeated!";
+
+    $player = $request->user()->player;
+
+    $expReward = (int) (
+        $battle['enemy']['exp_reward'] ?? 10
+    );
+
+    $rewards = $this->grantExp(
+        $player,
+        $expReward
+    );
+
+    $battle['rewards'] = $rewards;
+
+    $battle['player']['level'] =
+        $rewards['new_level'];
+
+    $battle['player']['exp'] =
+        $rewards['current_exp'];
+
+    $battle['player']['exp_to_next_level'] =
+        $rewards['exp_to_next_level'];
+
+    if (isset($rewards['stats'])) {
+        foreach (
+            ['max_hp', 'max_mp', 'attack', 'defense', 'speed']
+            as $stat
+        ) {
+            $battle['player'][$stat] =
+                $rewards['stats'][$stat];
+        }
+    }
+
+    $battle['log'][] =
+        "{$player->name} gained {$expReward} EXP!";
+
+    if ($rewards['levels_gained'] > 0) {
+        $battle['log'][] =
+            "{$player->name} reached level {$rewards['new_level']}!";
+    }
+}
+}

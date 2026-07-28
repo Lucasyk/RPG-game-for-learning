@@ -28,6 +28,8 @@ Route::middleware("auth")->group(function(){
         
         Route::post("/attack", [BattleController::class, "attack"])->name("attack");
 
+        Route::post("/skill", [BattleController::class, "skill"])->name("skill");
+
         Route::post("/end", [BattleController::class, "endBattle"])->name("end");
     });
 });

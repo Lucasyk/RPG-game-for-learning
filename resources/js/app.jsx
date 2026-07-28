@@ -34,6 +34,7 @@ if (battleRoot) {
     <BattlePage
         initialBattle={initialBattle}
         attackUrl={battleRoot.dataset.attackUrl}
+        skillUrl={battleRoot.dataset.skillUrl}
         endUrl={battleRoot.dataset.endUrl}
     />
 );

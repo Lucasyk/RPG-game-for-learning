@@ -1,14 +1,50 @@
 import { useEffect, useRef, useState } from 'react';
+const CLASS_SKILLS = {
+    warrior: {
+        name: 'Power Strike',
+        icon: '💥',
+        cost: 4,
+    },
+
+    mage: {
+        name: 'Fireball',
+        icon: '🔥',
+        cost: 6,
+    },
+
+    rogue: {
+        name: 'Double Slash',
+        icon: '🗡️',
+        cost: 5,
+    },
+};
+
+function getClassSkill(characterClass) {
+    return CLASS_SKILLS[characterClass] ?? {
+        name: 'Class Skill',
+        icon: '✨',
+        cost: 0,
+    };
+}
 
 export default function BattlePage({
     initialBattle,
     attackUrl,
+    skillUrl,
     endUrl,
 }) {
     const [battle, setBattle] = useState(initialBattle);
     const [isEnding, setIsEnding] = useState(false);
     const [isAttacking, setIsAttacking] = useState(false);
     const [error, setError] = useState('');
+    const [isUsingSkill, setIsUsingSkill] = useState(false);
+    const classSkill = getClassSkill(
+    battle.player.character_class
+);
+
+const isBusy =
+    isAttacking ||
+    isUsingSkill;
 
     /*
     |--------------------------------------------------------------------------
@@ -29,6 +65,63 @@ export default function BattlePage({
             </main>
         );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Skill
+    |--------------------------------------------------------------------------
+    */
+    
+    async function useSkill() {
+    if (
+        battle.status !== 'ongoing' ||
+        isBusy
+    ) {
+        return;
+    }
+
+    setIsUsingSkill(true);
+    setError('');
+
+    try {
+        const csrfToken = getCsrfToken();
+
+        const response = await fetch(skillUrl, {
+            method: 'POST',
+
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+
+            body: JSON.stringify({}),
+        });
+
+        const data = await readJsonResponse(response);
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ?? 'The skill failed.'
+            );
+        }
+
+        if (!data.battle) {
+            throw new Error(
+                'Laravel did not return battle data.'
+            );
+        }
+
+        setBattle(data.battle);
+    } catch (skillError) {
+        setError(
+            skillError.message ??
+                'Something went wrong while using the skill.'
+        );
+    } finally {
+        setIsUsingSkill(false);
+    }
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -206,27 +299,43 @@ export default function BattlePage({
 
                 <section className="mt-8 flex justify-center gap-4">
                     {battle.status === 'ongoing' ? (
-                        <button
-                            type="button"
-                            onClick={attack}
-                            disabled={isAttacking}
-                            className="rounded-xl bg-red-700 px-10 py-4 text-xl font-black transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400"
-                        >
-                            {isAttacking
-                                ? 'Attacking...'
-                                : 'Attack ⚔️'}
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={endBattle}
-                            disabled={isEnding}
-                            className="rounded-xl bg-blue-700 px-10 py-4 text-xl font-black transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400"
-                        >
-                            {isEnding
-                                ? 'Leaving...'
-                                : 'Return to Dashboard'}
-                        </button>
+    <>
+        <button
+            type="button"
+            onClick={attack}
+            disabled={isBusy}
+            className="rounded-xl bg-red-700 px-8 py-4 text-xl font-black transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-gray-700"
+        >
+            {isAttacking
+                ? 'Attacking...'
+                : 'Attack ⚔️'}
+        </button>
+
+        <button
+            type="button"
+            onClick={useSkill}
+            disabled={
+                isBusy ||
+                battle.player.mp < classSkill.cost
+            }
+            className="rounded-xl bg-purple-700 px-8 py-4 text-xl font-black transition hover:bg-purple-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400"
+        >
+            {isUsingSkill
+                ? 'Using Skill...'
+                : `${classSkill.icon} ${classSkill.name} (${classSkill.cost} MP)`}
+        </button>
+    </>
+) : (
+    <button
+        type="button"
+        onClick={endBattle}
+        disabled={isEnding}
+        className="rounded-xl bg-blue-700 px-10 py-4 text-xl font-black hover:bg-blue-600 disabled:bg-gray-700"
+    >
+        {isEnding
+            ? 'Leaving...'
+            : 'Return to Dashboard'}
+    </button>
                     )}
                 </section>
 
